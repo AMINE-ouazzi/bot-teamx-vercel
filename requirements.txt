@@ -1,0 +1,6 @@
+pyTelegramBotAPI
+requests
+beautifulsoup4
+fake-useragent
+img2pdf
+pillow
