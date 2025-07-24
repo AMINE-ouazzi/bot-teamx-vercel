@@ -13,38 +13,31 @@ import img2pdf
 import re
 from PIL import Image
 
-# --- الإعدادات الأساسية ---
 BOT_TOKEN = '7940323575:AAG5UM_w_2yoq7-ZJQsSvCX7HECSSPjngf8'
 URL = 'https://olympustaff.com/'
 ADMIN_ID = 7340138728
 
-# --- ## تعديل هام: إعدادات قناة الأرشيف والكاش ## ---
 ARCHIVE_CHANNEL_ID = -1002635999889
 CHAPTER_CACHE_FILE = 'chapters_cache.json'
 
-# --- ملفات البيانات ---
 CHANNELS_FILE = 'channels.json'
 USERS_FILE = 'users.json'
 BANNED_USERS_FILE = 'banned_users.json'
 
-# --- إعدادات إضافية ---
 CHAPTERS_PER_BOT_PAGE = 49
 PDF_MAX_SIZE_MB = 49
 PDF_MAX_SIZE_BYTES = PDF_MAX_SIZE_MB * 1024 * 1024
 COMPRESSION_QUALITY = 66
 LOGO_FILE = 'logo.png'
 
-# --- إعدادات نظام الحماية ---
 CACHE_TTL = 15 * 60
-COOLDOWN_SECONDS = 5  # Cooldown for general button clicks
+COOLDOWN_SECONDS = 5  
 CHAPTER_COLS = 34
 
-# --- ## الإضافة الجديدة: نظام منع التزامن والتهدئة ## ---
-CHAPTER_COOLDOWN_SECONDS = 2 * 60  # 2 minutes cooldown between chapters
-USER_TASK_STATUS: Dict[int, bool] = {}  # Tracks if a user has an active chapter download
-user_chapter_cooldown: Dict[int, float] = {}  # Tracks the timestamp of the last successful chapter download
+CHAPTER_COOLDOWN_SECONDS = 2 * 60  
+USER_TASK_STATUS: Dict[int, bool] = {} 
+user_chapter_cooldown: Dict[int, float] = {}  
 
-# --- تهيئة البوت والمتغيرات ---
 ua = UserAgent()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
@@ -53,7 +46,6 @@ USER_SESSIONS: Dict[int, Dict[str, Any]] = {}
 user_last_click: Dict[int, float] = {}
 admin_next_step = {}
 
-# --- دوال إدارة البيانات ---
 def load_json_data(filename: str, default_value: Any = None) -> Any:
     try:
         with open(filename, 'r', encoding='utf-8') as f: return json.load(f)
@@ -67,7 +59,6 @@ def add_user_to_db(user_id: int):
         users.append(user_id)
         save_json_data(USERS_FILE, users)
 
-# --- دوال الاشتراك الإجباري ---
 def check_subscription(user_id: int) -> bool:
     channels = load_json_data(CHANNELS_FILE, [])
     if not channels: return True
@@ -177,9 +168,7 @@ def fetch_all_manga_chapters(manga_url: str) -> List[Dict]:
         page += 1
     return all_chapters
 
-# --- دالة معالجة طلب الفصل بنظام الكاش والأرشفة ---
 def process_chapter_request(chat_id: int, message_id: int, chapter_url: str, chapter_title: str, manga_title: str):
-    # --- ## تعديل: تعيين حالة المستخدم إلى "مشغول" ## ---
     USER_TASK_STATUS[chat_id] = True
 
     chapters_cache = load_json_data(CHAPTER_CACHE_FILE, {})
@@ -193,7 +182,6 @@ def process_chapter_request(chat_id: int, message_id: int, chapter_url: str, cha
                 bot.edit_message_text("✅ تم العثور على الفصل في الأرشيف! جارٍ الإرسال...", chat_id, message_id)
                 bot.forward_message(chat_id, from_chat_id=archive_chat_id, message_id=archive_message_id)
                 bot.delete_message(chat_id, message_id)
-                # --- ## تعديل: تحديث وقت التهدئة وإلغاء حالة الانشغال ## ---
                 user_chapter_cooldown[chat_id] = time.time()
                 USER_TASK_STATUS.pop(chat_id, None)
                 return
@@ -278,19 +266,15 @@ def create_and_archive_chapter(chat_id: int, message_id: int, chapter_url: str, 
         bot.edit_message_text("✅ تم تجهيز الفصل! جارٍ الإرسال...", chat_id, wait_msg.id)
         bot.forward_message(chat_id, from_chat_id=archive_msg.chat.id, message_id=archive_msg.message_id)
         bot.delete_message(chat_id, wait_msg.id)
-        # --- ## تعديل: تحديث وقت التهدئة عند النجاح ## ---
         user_chapter_cooldown[chat_id] = time.time()
     except Exception as e:
         logging.error(f"[{chat_id}] Error creating and archiving the class. Can you point the error to the developer to fix the problem {e}", exc_info=True)
         try: bot.edit_message_text(f"❌ حدث خطأ أثناء إعداد الفصل.", chat_id, wait_msg.id)
         except: bot.send_message(chat_id, f"❌ حدث خطأ أثناء إعداد الفصل. يرجى ابلاغ المطور  @ropani")
     finally:
-        # --- ## تعديل: التأكد من إلغاء حالة الانشغال دائماً ## ---
         USER_TASK_STATUS.pop(chat_id, None)
         if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
 
-# --- دوال إنشاء الأزرار (لا تغييرات هنا) ---
-# ... (جميع دوال create_..._markup كما هي)
 def create_search_results_markup(session: Dict, page: int) -> types.InlineKeyboardMarkup:
     markup = types.InlineKeyboardMarkup()
     page_data = session['cache'][page]
@@ -341,7 +325,6 @@ def create_paginated_chapters_markup(full_chapters: List[Dict], bot_page: int, s
         types.InlineKeyboardButton("🔙 العودة", callback_data=f"select:{search_page}:{manga_index}")
     )
     return markup
-# --- معالج الاشتراك الإجباري ---
 def subscription_required(func):
     def wrapper(message):
         user_id = message.from_user.id
@@ -355,8 +338,6 @@ def subscription_required(func):
         func(message)
     return wrapper
 
-# --- معالجات البوت ---
-# ... (دوال start و git و get_session كما هي)
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
@@ -398,13 +379,11 @@ def get_session(chat_id: int) -> Dict | None:
         return None
     session['timestamp'] = time.time()
     return session
-# --- ## تعديل: إضافة التحقق من حالة الانشغال ## ---
 @subscription_required
 def handle_initial_search(message):
     chat_id = message.chat.id
     user_id = message.from_user.id
 
-    # التحقق إذا كان المستخدم يقوم بتحميل فصل حالياً
     if USER_TASK_STATUS.get(user_id, False):
         bot.reply_to(message, "⏳ *العملية السابقة لم تنتهي بعد. يرجى التحلي بالصبر.*")
         return
@@ -499,7 +478,6 @@ def handle_all_callbacks(call):
     action = parts[0]
     try:
         if action == "chaps":
-            # ... (no changes here)
             bot.answer_callback_query(call.id)
             if call.message.content_type == 'text':
                 bot.edit_message_text("⏳ جاري جلب قائمة الفصول الكاملة...", chat_id, call.message.id, reply_markup=None)
@@ -532,16 +510,13 @@ def handle_all_callbacks(call):
             markup = create_paginated_chapters_markup(full_chapters, bot_page, search_page, manga_index, reversed_order)
             bot.edit_message_reply_markup(chat_id, call.message.id, reply_markup=markup)
 
-        # --- ## تعديل: إضافة التحقق من حالة الانشغال وفترة التهدئة ## ---
         elif action == "download":
-            # 1. التحقق من فترة التهدئة (Cooldown)
             last_download_time = user_chapter_cooldown.get(user_id)
             if last_download_time and (time.time() - last_download_time) < CHAPTER_COOLDOWN_SECONDS:
                 remaining_time = int(CHAPTER_COOLDOWN_SECONDS - (time.time() - last_download_time))
                 bot.answer_callback_query(call.id, f"يجب عليك الانتظار {remaining_time} ثانية قبل طلب فصل آخر.", show_alert=True)
                 return
 
-            # 2. التحقق من حالة الانشغال (Busy Status)
             if USER_TASK_STATUS.get(user_id, False):
                 bot.answer_callback_query(call.id, "⏳ العملية السابقة لم تنتهي بعد. يرجى التحلي بالصبر.", show_alert=True)
                 return
@@ -557,7 +532,6 @@ def handle_all_callbacks(call):
             process_chapter_request(chat_id, call.message.id, chapter_data['link'], chapter_data['title'], manga_title)
             return
         elif action == "select":
-            # ... (no changes here)
             bot.answer_callback_query(call.id)
             page, index = int(parts[1]), int(parts[2])
             manga_title = session['cache'][page]['results'][index]['title']
@@ -582,7 +556,6 @@ def handle_all_callbacks(call):
             else:
                  bot.answer_callback_query(call.id, "فشل جلب المعلومات.", show_alert=True)
         elif action == "back_to_search":
-            # ... (no changes here)
             bot.answer_callback_query(call.id)
             page = int(parts[1])
             markup = create_search_results_markup(session, page)
@@ -593,7 +566,6 @@ def handle_all_callbacks(call):
             else:
                 bot.edit_message_text(text_to_send, chat_id, call.message.id, reply_markup=markup)
         elif action == "nav":
-            # ... (no changes here)
             bot.answer_callback_query(call.id, "جاري جلب الصفحة...")
             page = int(parts[1])
             if page <= 0: return
